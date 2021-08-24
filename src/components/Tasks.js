@@ -1,13 +1,12 @@
+import Task from './Task'
 
-import { useState } from 'react';
 // could have tasks stored in redux, or somthing else external, but
 // what we will do is just use as app js.
-const Tasks = ({ tasks }) => {
-
+const Tasks = ({ tasks, onDelete }) => {
     return (
         <>
             {tasks.map((task) => (
-                <h3 key={task.id}>{task.text}</h3>
+                <Task key={task.id} task={task} onDelete={onDelete} />
             ))}
         </>
     )
