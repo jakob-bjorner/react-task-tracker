@@ -1,9 +1,12 @@
 // following https://www.youtube.com/watch?v=w7ejDZ8SWv8
+import { useState, useEffect } from "react";
+import { BrowserRouter as Router, Route } from "react-router-dom";
 import Header from "./components/Header";
+import Footer from "./components/Footer";
 import Tasks from "./components/Tasks";
 import EmptyTasks from "./components/EmptyTasks";
 import AddTask from "./components/AddTask";
-import { useState, useEffect } from "react";
+import About from "./components/About";
 // functions with hooks tend to be the default now
 function App() {
   // cannot use class, must use className
@@ -33,13 +36,14 @@ function App() {
     return data;
   };
 
-  // fetchTask
-  const fetchTask = async (id) => {
-    const res = await fetch(`http://localhost:5000/tasks/${id}`);
-    const data = await res.json();
+  // fetchTask Never used, but used in tutorial
+  // const fetchTask = async (id) => {
+  //   const res = await fetch(`http://localhost:5000/tasks/${id}`);
+  //   const data = await res.json();
 
-    return data;
-  };
+  //   return data;
+  // };
+
   const addTask = async (task) => {
     const res = await fetch(`http://localhost:5000/tasks`, {
       method: "POST",
@@ -178,25 +182,38 @@ function App() {
   return (
     // here we work with the fundamental principle that states get passed down and
     // actions get passed up.
-    <div className="container">
-      <Header
-        title="Task Tracker"
-        onAdd={() => setShowAddTask(!showAddTask)}
-        isShowAddTask={showAddTask}
-        onClickUndo={undo}
-        tasksLeft={state.history.length}
-      />
-      {showAddTask ? <AddTask onAdd={addTask} /> : ""}
-      {state.history[state.history.length - 1].length > 0 ? (
-        <Tasks
-          tasks={state.history[state.history.length - 1]}
-          onDelete={deleteTask}
-          onToggleReminder={onToggleReminder}
+    <Router>
+      <div className="container">
+        <Header
+          title="Task Tracker"
+          onAdd={() => setShowAddTask(!showAddTask)}
+          isShowAddTask={showAddTask}
+          onClickUndo={undo}
+          tasksLeft={state.history.length}
         />
-      ) : (
-        <EmptyTasks />
-      )}
-    </div>
+
+        <Route
+          path="/"
+          exact
+          render={(props) => (
+            <>
+              {showAddTask ? <AddTask onAdd={addTask} /> : ""}
+              {state.history[state.history.length - 1].length > 0 ? (
+                <Tasks
+                  tasks={state.history[state.history.length - 1]}
+                  onDelete={deleteTask}
+                  onToggleReminder={onToggleReminder}
+                />
+              ) : (
+                <EmptyTasks />
+              )}
+            </>
+          )}
+        />
+        <Route path="/about" component={About} />
+        <Footer />
+      </div>
+    </Router>
   );
 }
 
