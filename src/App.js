@@ -17,7 +17,6 @@ function App() {
   useEffect(() => {
     const getTasks = async () => {
       const tasksFromServer = await fetchTasks(); // because this is async
-      console.log(tasksFromServer);
       setStatus({ history: [tasksFromServer] });
     };
 
@@ -33,24 +32,44 @@ function App() {
 
     return data;
   };
-  const addTask = (task) => {
-    const id = Math.floor(Math.random() * 10000) + 1;
-    console.log(id);
-    const newTask = { id, ...task };
-    const oldTasks = state.history[state.history.length - 1];
-    const newTasks = oldTasks.concat(newTask);
-    const newHistory = state.history.concat([newTasks]);
-    setStatus({
-      history: newHistory,
+
+  // fetchTask
+  const fetchTask = async (id) => {
+    const res = await fetch(`http://localhost:5000/tasks/${id}`);
+    const data = await res.json();
+
+    return data;
+  };
+  const addTask = async (task) => {
+    const res = await fetch(`http://localhost:5000/tasks`, {
+      method: "POST",
+      headers: { "Content-type": "application/json" },
+      body: JSON.stringify(task),
     });
+
+    const data = await res.json();
+
+    const oldTasks = state.history[state.history.length - 1];
+    const newTasks = [...oldTasks, data];
+    setStatus({
+      history: state.history.concat([newTasks]),
+    });
+    // const id = Math.floor(Math.random() * 10000) + 1;
+    // const newTask = { id, ...task };
+    // const oldTasks = state.history[state.history.length - 1];
+    // const newTasks = oldTasks.concat(newTask);
+    // const newHistory = state.history.concat([newTasks]);
+    // setStatus({
+    //   history: newHistory,
+    // });
     // need to populate new task from form content,
     // need to clear form entries for new one to be submitted.
   };
 
   //Delete Task
-  const deleteTask = (id) => {
-    // console.log("delete", id, state.history);
-    // console.log("what I plan to change history to", history.concat([tasks]));
+  const deleteTask = async (id) => {
+    await fetch(`http://localhost:5000/tasks/${id}`, { method: "DELETE" });
+
     const lastTasks = state.history[state.history.length - 1];
     // filter out tasks which have the id given to the delete function.
     const newTasks = lastTasks.filter((task) => task.id !== id);
@@ -59,26 +78,96 @@ function App() {
     setStatus({
       history: newHistory,
     });
+
+    // {
+    //   "tasks": [
+    //     {
+    //       "id": 1,
+    //       "text": "Doctors Appointment",
+    //       "day": "Feb 5th at 2:30pm",
+    //       "reminder": true
+    //     },
+    //     {
+    //       "id": 2,
+    //       "text": "Meeting at School",
+    //       "day": "Feb 6th at 1:30pm",
+    //       "reminder": true
+    //     },
+    //     {
+    //       "id": 3,
+    //       "text": "Food Shopping",
+    //       "day": "Feb 5th at 2:30pm",
+    //       "reminder": false
+    //     }
+    //   ]
+    // }
   };
 
-  const undo = () => {
+  const undo = async () => {
+    // I can set the entire data base every time I undo because they are likely to be small,
+    // but this wouldn't scale well. Be warned
+    // await fetch(`http://localhost:5000/tasks`, { method: 'DELETE'});
+    const currentTasks = state.history[state.history.length - 1];
     const tempHistory = state.history.slice(0, state.history.length - 1);
+
     setStatus({
       history: tempHistory,
     });
+    const updatedTasks = tempHistory[tempHistory.length - 1];
+
+    console.log(currentTasks, updatedTasks);
+    // now I need to find tasks in the updated Tasks who are not in the current tasks.
+    updatedTasks.map(async (taskUpdated) => {
+      if (currentTasks.find((x) => x.id === taskUpdated.id) === undefined) {
+        await fetch(`http://localhost:5000/tasks`, {
+          method: "POST",
+          headers: { "Content-type": "application/json" },
+          body: JSON.stringify(taskUpdated),
+        });
+      }
+    });
+    currentTasks.map(async (task) => {
+      const taskUpdated = updatedTasks.find((x) => x.id === task.id);
+      if (taskUpdated !== undefined) {
+        // just update the task in the database.
+        if (
+          taskUpdated.text !== task.text ||
+          taskUpdated.day !== task.day ||
+          taskUpdated.reminder !== task.reminder
+        ) {
+          await fetch(`http://localhost:5000/tasks/${taskUpdated.id}`, {
+            method: "PUT",
+            headers: { "Content-type": "application/json" },
+            body: JSON.stringify(taskUpdated),
+          });
+        }
+      } else {
+        // we need to delete the task
+        console.log(currentTasks, task, updatedTasks);
+        await fetch(`http://localhost:5000/tasks/${task.id}`, {
+          method: "DELETE",
+        });
+      }
+    });
   };
 
-  const onToggleReminder = (id) => {
-    console.log("toggle", id);
+  const onToggleReminder = async (id) => {
     const lastTasks = state.history[state.history.length - 1];
+    let toggledTask = {};
     const newTasks = lastTasks.map((task) => {
       if (task.id === id) {
+        toggledTask = { ...task, reminder: !task.reminder };
         return {
           ...task, // this line copies over the rest of the task
           reminder: !task.reminder, // this updates the reminder so that it is the opposite of what it was
         };
       }
       return task;
+    });
+    await fetch(`http://localhost:5000/tasks/${id}`, {
+      method: "PUT",
+      headers: { "Content-type": "application/json" },
+      body: JSON.stringify(toggledTask),
     });
     const newHistory = state.history.concat([newTasks]);
     setStatus({
